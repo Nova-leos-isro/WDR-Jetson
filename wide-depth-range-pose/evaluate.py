@@ -1,5 +1,5 @@
-import json
 
+import json
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
@@ -15,7 +15,7 @@ from utils import (
 
 from poses import PoseAnnot
 
-def evaluate(cfg, predictions):
+def evaluate(cfg, predictions, excel_path=None):
     INF = 100000000
     classNum = cfg['DATASETS']['N_CLASS'] - 1 # get rid of the background class
 
@@ -61,6 +61,10 @@ def evaluate(cfg, predictions):
 
     errors_adi_per_depth = list([] for i in range(0, depth_bins))
     errors_rep_per_depth = list([] for i in range(0, depth_bins))
+
+    # --- Addon: collect pose pairs for Excel output ---
+    pose_rows = []
+
     for clsid in range(classNum):
         errors_adi_all = [] # 3D errors
         errors_rep_all = [] # 2D errors
@@ -93,7 +97,17 @@ def evaluate(cfg, predictions):
                 R2 = pred[bestIdx][2]
                 T2 = pred[bestIdx][3]
                 err_3d, err_2d = compute_pose_diff(surfacePts[clsid], K, R1, T1, R2, T2)
-                # 
+                # Save to pose_rows for Excel
+                pose_rows.append({
+                    'filename': filename,
+                    'class_id': clsid,
+                    'R1': np.array(R1).flatten().tolist(),
+                    'T1': np.array(T1).flatten().tolist(),
+                    'R2': np.array(R2).flatten().tolist(),
+                    'T2': np.array(T2).flatten().tolist(),
+                    'err_3d': err_3d,
+                    'err_2d': err_2d
+                })
                 errors_adi_all.append(err_3d / meshDiameter[clsid])
                 errors_rep_all.append(err_2d)
                 errors_adi_per_depth[depth_idx].append(err_3d / meshDiameter[clsid])
@@ -103,6 +117,7 @@ def evaluate(cfg, predictions):
                 errors_rep_all.append(50)
                 errors_adi_per_depth[depth_idx].append(1.0)
                 errors_rep_per_depth[depth_idx].append(50)
+
 
         assert(len(errors_adi_all) == len(errors_rep_all))
         counts_all = len(errors_adi_all)
@@ -141,7 +156,28 @@ def evaluate(cfg, predictions):
         else:
             accuracy_adi_per_depth.append({})
             accuracy_rep_per_depth.append({})
-    # 
+    # Write pose pairs to Excel if requested
+    if excel_path is not None:
+        print(f"[DEBUG] Attempting to save Excel. pose_rows count: {len(pose_rows)}, path: {excel_path}")
+        import sys; sys.stdout.flush()
+        if len(pose_rows) > 0:
+            try:
+                import pandas as pd
+                df = pd.DataFrame(pose_rows)
+                # Expand R1, T1, R2, T2 columns for readability
+                for col in ['R1', 'T1', 'R2', 'T2']:
+                    arr = np.stack(df[col].values)
+                    for i in range(arr.shape[1]):
+                        df[f'{col}_{i}'] = arr[:, i]
+                    df = df.drop(columns=[col])
+                df.to_excel(excel_path, index=False)
+                print(f"Pose pairs and errors written to Excel: {excel_path}")
+            except Exception as e:
+                print(f"Failed to write Excel file: {e}")
+        else:
+            print("[DEBUG] No pose_rows to save to Excel.")
+        sys.stdout.flush()
+
     return accuracy_adi_per_class, accuracy_rep_per_class, accuracy_adi_per_depth, accuracy_rep_per_depth, [depth_min, depth_max]
 
 def remap_predictions(internal_K, internal_width, internal_height, keypoints_3d, predictions):
