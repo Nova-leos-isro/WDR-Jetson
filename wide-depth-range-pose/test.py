@@ -9,7 +9,8 @@ from torch.utils.data import DataLoader, sampler
 from tqdm import tqdm
 
 import numpy as np
-import cv2
+
+import matplotlib.pyplot as plt
 
 from argument import get_args
 from backbone import darknet53
@@ -32,6 +33,8 @@ from train import (
 from utils import (
     visualize_accuracy_per_depth,
     print_accuracy_per_class,
+    compute_error_statistics,
+    plot_error_statistics,
 )
 
 from tensorboardX import SummaryWriter
@@ -131,7 +134,7 @@ if __name__ == '__main__':
             broadcast_buffers=False,
         )
         model = model.module
- 
+
     valid_loader = DataLoader(
         valid_set,
         batch_size=batch_size_per_gpu,
@@ -140,16 +143,21 @@ if __name__ == '__main__':
         collate_fn=collate_fn(cfg['INPUT']['SIZE_DIVISIBLE']),
     )
 
+    # Path to save pose errors Excel file
+    excel_path = cfg['RUNTIME']['WORKING_DIR'] + 'pose_errors.xlsx'
     accuracy_adi_per_class, accuracy_rep_per_class, accuracy_adi_per_depth, accuracy_rep_per_depth, depth_range = \
-        valid(cfg, 0, valid_loader, model, device, logger=logger)
+        valid(cfg, 0, valid_loader, model, device, logger=logger, excel_path=excel_path)
 
-    visImg = visualize_accuracy_per_depth(
-        accuracy_adi_per_class, 
-        accuracy_rep_per_class, 
-        accuracy_adi_per_depth, 
-        accuracy_rep_per_depth, 
-        depth_range)
+    # Compute and print error statistics
+    stats = compute_error_statistics(
+        accuracy_adi_per_class, accuracy_rep_per_class, accuracy_adi_per_depth, accuracy_rep_per_depth, depth_range)
+    print("Mathematical Error Statistics:")
+    for k, v in stats.items():
+        print(f"{k}: {v}")
 
-    visFileName = cfg['RUNTIME']['WORKING_DIR'] + 'error_statistics_per_depth.png'
-    cv2.imwrite(visFileName, visImg)
-    print("Error statistics for each depth bin are saved to '%s'" % visFileName)
+    # Plot and save error statistics using matplotlib
+    plot_path = cfg['RUNTIME']['WORKING_DIR'] + 'matplotlib_error_statistics.png'
+    plot_error_statistics(
+        accuracy_adi_per_class, accuracy_rep_per_class, accuracy_adi_per_depth, accuracy_rep_per_depth, depth_range,
+        save_path=plot_path, show_plot=False)
+    print(f"Matplotlib error statistics plot saved to '{plot_path}'")
