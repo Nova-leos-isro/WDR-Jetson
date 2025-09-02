@@ -72,7 +72,7 @@ def accumulate_dicts(data):
     return data
 
 @torch.no_grad()
-def valid(cfg, epoch, loader, model, device, logger=None):
+def valid(cfg, epoch, loader, model, device, logger=None, excel_path=None):
     torch.cuda.empty_cache()
 
     model.eval()
@@ -118,7 +118,7 @@ def valid(cfg, epoch, loader, model, device, logger=None):
         return
     
     accuracy_adi_per_class, accuracy_rep_per_class, accuracy_adi_per_depth, accuracy_rep_per_depth, depth_range \
-        = evaluate(cfg, preds)
+        = evaluate(cfg, preds, excel_path=excel_path)
 
     print_accuracy_per_class(accuracy_adi_per_class, accuracy_rep_per_class)
 
