@@ -6,6 +6,80 @@ import trimesh
 import random
 
 import matplotlib.pyplot as plt
+def compute_error_statistics(accuracy_adi_per_class, accuracy_rep_per_class, accuracy_adi_per_depth, accuracy_rep_per_depth, depth_range):
+    import numpy as np
+    # Per-class ADI/REP means
+    adi_means = []
+    rep_means = []
+    for acc in accuracy_adi_per_class:
+        vals = [v for v in acc.values() if isinstance(v, (int, float, np.floating))]
+        if vals:
+            adi_means.append(np.mean(vals))
+    for acc in accuracy_rep_per_class:
+        vals = [v for v in acc.values() if isinstance(v, (int, float, np.floating))]
+        if vals:
+            rep_means.append(np.mean(vals))
+    # Per-depth ADI/REP means
+    adi_depth_means = []
+    rep_depth_means = []
+    for acc in accuracy_adi_per_depth:
+        vals = [v for v in acc.values() if isinstance(v, (int, float, np.floating))]
+        if vals:
+            adi_depth_means.append(np.mean(vals))
+    for acc in accuracy_rep_per_depth:
+        vals = [v for v in acc.values() if isinstance(v, (int, float, np.floating))]
+        if vals:
+            rep_depth_means.append(np.mean(vals))
+    stats = {
+        'adi_class_mean': np.mean(adi_means) if adi_means else None,
+        'adi_class_std': np.std(adi_means) if adi_means else None,
+        'rep_class_mean': np.mean(rep_means) if rep_means else None,
+        'rep_class_std': np.std(rep_means) if rep_means else None,
+        'adi_depth_mean': np.mean(adi_depth_means) if adi_depth_means else None,
+        'adi_depth_std': np.std(adi_depth_means) if adi_depth_means else None,
+        'rep_depth_mean': np.mean(rep_depth_means) if rep_depth_means else None,
+        'rep_depth_std': np.std(rep_depth_means) if rep_depth_means else None,
+        'depth_range': depth_range,
+    }
+    return stats
+
+def plot_error_statistics(accuracy_adi_per_class, accuracy_rep_per_class, accuracy_adi_per_depth, accuracy_rep_per_depth, depth_range, save_path=None, show_plot=False):
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+    # Per-class
+    class_ids = np.arange(len(accuracy_adi_per_class))
+    adi_keys = list(accuracy_adi_per_class[0].keys()) if accuracy_adi_per_class and accuracy_adi_per_class[0] else []
+    rep_keys = list(accuracy_rep_per_class[0].keys()) if accuracy_rep_per_class and accuracy_rep_per_class[0] else []
+    for k in adi_keys:
+        vals = [acc.get(k, 0) for acc in accuracy_adi_per_class]
+        ax1.plot(class_ids, vals, marker='o', label=f'ADI {k}')
+    for k in rep_keys:
+        vals = [acc.get(k, 0) for acc in accuracy_rep_per_class]
+        ax1.plot(class_ids, vals, marker='x', label=f'REP {k}')
+    ax1.set_title('Error per Class')
+    ax1.set_xlabel('Class ID')
+    ax1.set_ylabel('Accuracy (%)')
+    ax1.legend()
+    ax1.grid(True)
+    # Per-depth
+    depth_bins = np.arange(len(accuracy_adi_per_depth))
+    for k in adi_keys:
+        vals = [acc.get(k, 0) for acc in accuracy_adi_per_depth]
+        ax2.plot(depth_bins, vals, marker='o', label=f'ADI {k}')
+    for k in rep_keys:
+        vals = [acc.get(k, 0) for acc in accuracy_rep_per_depth]
+        ax2.plot(depth_bins, vals, marker='x', label=f'REP {k}')
+    ax2.set_title('Error per Depth Bin')
+    ax2.set_xlabel('Depth Bin')
+    ax2.set_ylabel('Accuracy (%)')
+    ax2.legend()
+    ax2.grid(True)
+    plt.tight_layout()
+    if save_path:
+        plt.savefig(save_path)
+    if show_plot:
+        plt.show()
+    plt.close(fig)
+    return save_path
 import numpy as np
 import cv2
 import torch
