@@ -1,0 +1,11 @@
+torch
+torchvision
+numpy
+scipy
+pyyaml
+pillow
+tqdm
+opencv-python
+trimesh
+tensorboardX
+matplotlib
