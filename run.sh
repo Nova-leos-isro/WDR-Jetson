@@ -19,3 +19,5 @@ unzip file.zip
 
 
 pip install -r requirements.txt
+
+rm -r archive.zip 'archive (1).zip' file.zip
